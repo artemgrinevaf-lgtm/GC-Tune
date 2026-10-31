@@ -2,8 +2,6 @@ name: Build GC-Tune APK
 
 on:
   workflow_dispatch:
-  push:
-    branches: [ main ]
 
 jobs:
   build:
@@ -18,16 +16,21 @@ jobs:
       with:
         java-version: '17'
         distribution: 'temurin'
-        cache: gradle
     
-    - name: Grant execute permission for gradlew
-      run: chmod +x gradlew
+    - name: Install Gradle
+      run: |
+        wget https://services.gradle.org/distributions/gradle-8.0-bin.zip
+        unzip gradle-8.0-bin.zip
+        echo "$GITHUB_WORKSPACE/gradle-8.0/bin" >> $GITHUB_PATH
     
-    - name: Build Debug APK
+    - name: Generate Gradle Wrapper
+      run: gradle wrapper --gradle-version 8.0
+    
+    - name: Build APK
       run: ./gradlew assembleDebug --no-daemon
     
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
-        name: gctune-debug-apk
+        name: gctune-apk
         path: app/build/outputs/apk/debug/app-debug.apk
