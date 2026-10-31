@@ -32,7 +32,7 @@ import java.util.zip.ZipFile;
  * <item component="ComponentInfo{pkg/class}" drawable="name"/> entries, plus a
  * fallback that scans the pack APK for res/drawable|mipmap file names that look
  * like package names (underscores replaced with dots).
- * Lookup per app: appfilter first, then fallback, then null (caller decides).
+ * Lookup per app: appfilter first, then fallback, then SYSTEM DEFAULT (Global ROM fix).
  */
 final class IconPackLoader {
 
@@ -110,19 +110,38 @@ final class IconPackLoader {
         return appfilter.size() + fallback.size();
     }
 
-    /** Pack icon for a package, or null when the pack has no entry for it. */
+    /** 
+     * Pack icon for a package. 
+     * GLOBAL ROM FIX: If the pack has no entry, it returns the system default icon 
+     * so that IconsTinter can still recolor it, ensuring 100% of icons get tinted.
+     */
     Drawable iconFor(String pkg) {
-        if (packContext == null) return null;
-        String name = appfilter.get(pkg);
-        if (name == null) name = fallback.get(pkg);
-        if (name == null) return null;
+        Drawable packIcon = null;
+        if (packContext != null) {
+            String name = appfilter.get(pkg);
+            if (name == null) name = fallback.get(pkg);
+            if (name != null) {
+                try {
+                    Resources r = packContext.getResources();
+                    String packPkg = packContext.getPackageName();
+                    int id = r.getIdentifier(name, "drawable", packPkg);
+                    if (id == 0) id = r.getIdentifier(name, "mipmap", packPkg);
+                    if (id != 0) {
+                        packIcon = r.getDrawable(id, packContext.getTheme());
+                    }
+                } catch (Throwable t) {
+                    // Ignore and fall back to default
+                }
+            }
+        }
+        
+        // If pack icon is found, return it. Otherwise, return the system default icon.
+        if (packIcon != null) {
+            return packIcon;
+        }
+        
         try {
-            Resources r = packContext.getResources();
-            String packPkg = packContext.getPackageName();
-            int id = r.getIdentifier(name, "drawable", packPkg);
-            if (id == 0) id = r.getIdentifier(name, "mipmap", packPkg);
-            if (id == 0) return null;
-            return r.getDrawable(id, packContext.getTheme());
+            return pm.getApplicationIcon(pkg);
         } catch (Throwable t) {
             return null;
         }
