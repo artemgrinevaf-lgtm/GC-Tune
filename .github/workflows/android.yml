@@ -7,86 +7,27 @@ on:
 
 jobs:
   build:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
     
-    - name: Set up JDK 11
+    - name: Set up JDK 17
       uses: actions/setup-java@v4
       with:
-        java-version: '11'
+        java-version: '17'
         distribution: 'temurin'
+        cache: gradle
     
-    - name: Setup Android SDK
-      uses: android-actions/setup-android@v3
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
     
-    - name: Install Android Build Tools
-      run: |
-        sdkmanager "build-tools;34.0.0" "platforms;android-34"
+    - name: Build Debug APK
+      run: ./gradlew assembleDebug --no-daemon
     
-    - name: Create signing keystore
-      run: |
-        keytool -genkey -v -keystore gctune.keystore -alias gctune -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=GC-Tune, OU=GC-Tune, O=GC-Tune, L=Unknown, ST=Unknown, C=US"
-    
-    - name: Build APK
-      shell: pwsh
-      run: |
-        $bt = "$env:ANDROID_HOME\build-tools\34.0.0"
-        $androidJar = "$env:ANDROID_HOME\platforms\android-34\android.jar"
-        $jdk = "$env:JAVA_HOME\bin"
-        $src = Get-Location
-        
-        # Clean old build artifacts
-        Remove-Item -Recurse -Force classes -ErrorAction SilentlyContinue
-        New-Item -ItemType Directory -Force classes | Out-Null
-        
-        # Find all Java files
-        $srcFiles = @(Get-ChildItem -Path $src -Filter *.java -File | ForEach-Object { $_.FullName })
-        Write-Output ("compiling: " + ($srcFiles -join ', '))
-        
-        # Compile Java
-        & "$jdk\javac.exe" -source 1.8 -target 1.8 -nowarn -encoding UTF-8 -bootclasspath $androidJar -cp $androidJar -d classes $srcFiles
-        if ($LASTEXITCODE -ne 0) { throw "javac failed ($LASTEXITCODE)" }
-        
-        # Create JAR
-        & "$jdk\jar.exe" cf classes.jar -C classes .
-        if ($LASTEXITCODE -ne 0) { throw "jar failed ($LASTEXITCODE)" }
-        
-        # Convert to DEX
-        & "$bt\d8.bat" --release --lib $androidJar --output . classes.jar
-        if ($LASTEXITCODE -ne 0) { throw "d8 failed ($LASTEXITCODE)" }
-        
-        # Clean old APKs
-        Remove-Item gctune-unsigned.apk,gctune-aligned.apk,gctune-signed.apk,gctune-signed.apk.idsig -ErrorAction SilentlyContinue
-        
-        # Package APK (with resources if res folder exists)
-        $resPath = Join-Path $src "res"
-        if (Test-Path $resPath) {
-          & "$bt\aapt.exe" package -f -M AndroidManifest.xml -S $resPath -I $androidJar -F gctune-unsigned.apk
-        } else {
-          & "$bt\aapt.exe" package -f -M AndroidManifest.xml -I $androidJar -F gctune-unsigned.apk
-        }
-        if ($LASTEXITCODE -ne 0) { throw "aapt package failed ($LASTEXITCODE)" }
-        
-        # Add DEX
-        & "$bt\aapt.exe" add gctune-unsigned.apk classes.dex | Out-Null
-        if ($LASTEXITCODE -ne 0) { throw "aapt add failed ($LASTEXITCODE)" }
-        
-        # Align
-        & "$bt\zipalign.exe" -f 4 gctune-unsigned.apk gctune-aligned.apk
-        if ($LASTEXITCODE -ne 0) { throw "zipalign failed ($LASTEXITCODE)" }
-        
-        # Sign
-        & "$bt\apksigner.bat" sign --ks gctune.keystore --ks-key-alias gctune --ks-pass pass:android --key-pass pass:android --out gctune-signed.apk gctune-aligned.apk
-        if ($LASTEXITCODE -ne 0) { throw "apksigner failed ($LASTEXITCODE)" }
-        if (-not (Test-Path 'gctune-signed.apk')) { throw 'sign failed' }
-        
-        Write-Output 'BUILD OK'
-    
-    - name: Upload APK artifact
+    - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
-        name: gctune-signed-apk
-        path: gctune-signed.apk
+        name: gctune-debug-apk
+        path: app/build/outputs/apk/debug/app-debug.apk
