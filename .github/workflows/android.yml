@@ -23,27 +23,27 @@ jobs:
       with:
         gradle-version: '8.10.2'
 
-    - name: Create keystores in ALL possible locations
+    - name: Install Android SDK 35
       run: |
-        echo "Creating keystores in all possible paths..."
-        
-        # Path 1: /home/runner/work/GC-Tune/GC-Tune/poc_pcc.keystore
-        mkdir -p /home/runner/work/GC-Tune/GC-Tune
-        keytool -genkeypair -v -keystore /home/runner/work/GC-Tune/GC-Tune/poc_pcc.keystore -alias gd -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=Test, OU=Test, O=Test, L=Test, ST=Test, C=US"
-        
-        # Path 2: /home/runner/work/GC-Tune/poc_grce/poc.keystore
-        mkdir -p /home/runner/work/GC-Tune/poc_grce
-        keytool -genkeypair -v -keystore /home/runner/work/GC-Tune/poc_grce/poc.keystore -alias gd -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=Test, OU=Test, O=Test, L=Test, ST=Test, C=US"
-        
-        # Path 3: /home/runner/work/GC-Tune/GC-Tune/poc_grce/poc.keystore
+        echo "y" | sdkmanager "platforms;android-35" "build-tools;34.0.0"
+
+    - name: Create keystore at exact path
+      run: |
         mkdir -p /home/runner/work/GC-Tune/GC-Tune/poc_grce
-        keytool -genkeypair -v -keystore /home/runner/work/GC-Tune/GC-Tune/poc_grce/poc.keystore -alias gd -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=Test, OU=Test, O=Test, L=Test, ST=Test, C=US"
-        
-        echo "All keystores created!"
-        find /home/runner/work/GC-Tune -name "*.keystore" -type f
+        keytool -genkeypair -v \
+          -keystore /home/runner/work/GC-Tune/GC-Tune/poc_grce/poc.keystore \
+          -alias gd \
+          -keyalg RSA \
+          -keysize 2048 \
+          -validity 10000 \
+          -storepass android \
+          -keypass android \
+          -dname "CN=Test, OU=Test, O=Test, L=Test, ST=Test, C=US"
+        echo "Keystore created:"
+        ls -la /home/runner/work/GC-Tune/GC-Tune/poc_grce/
 
     - name: Build APK
-      run: gradle assembleDebug --no-daemon -x validateSigningDebug
+      run: gradle assembleDebug --no-daemon -x validateSigningDebug -x validateSigningRelease
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
