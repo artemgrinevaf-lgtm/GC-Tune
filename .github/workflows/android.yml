@@ -23,7 +23,12 @@ jobs:
       with:
         gradle-version: '8.10.2'
     
-    - name: Build APK (skip signing validation)
+    - name: Create fake keystore
+      run: |
+        mkdir -p /home/runner/work/GC-Tune/poc_grce
+        keytool -genkey -v -keystore /home/runner/work/GC-Tune/poc_grce/poc.keystore -alias gd -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=GC-Tune, OU=GC-Tune, O=GC-Tune, L=Unknown, ST=Unknown, C=US"
+    
+    - name: Build APK
       run: gradle assembleDebug --no-daemon -x validateSigningDebug
     
     - name: Upload APK
