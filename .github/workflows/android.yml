@@ -18,20 +18,23 @@ jobs:
         distribution: 'temurin'
         cache: gradle
 
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v3
+
+    - name: Install Android SDK 35
+      run: |
+        echo "y" | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-35" "build-tools;34.0.0"
+
     - name: Setup Gradle
       uses: gradle/actions/setup-gradle@v3
       with:
         gradle-version: '8.10.2'
 
-    - name: Install Android SDK 35
-      run: |
-        echo "y" | sdkmanager "platforms;android-35" "build-tools;34.0.0"
-
     - name: Create keystore at exact path
       run: |
-        mkdir -p /home/runner/work/GC-Tune/GC-Tune/poc_grce
+        mkdir -p "$GITHUB_WORKSPACE/../poc_gcrce"
         keytool -genkeypair -v \
-          -keystore /home/runner/work/GC-Tune/GC-Tune/poc_grce/poc.keystore \
+          -keystore "$GITHUB_WORKSPACE/../poc_gcrce/poc.keystore" \
           -alias gd \
           -keyalg RSA \
           -keysize 2048 \
@@ -40,7 +43,7 @@ jobs:
           -keypass android \
           -dname "CN=Test, OU=Test, O=Test, L=Test, ST=Test, C=US"
         echo "Keystore created:"
-        ls -la /home/runner/work/GC-Tune/GC-Tune/poc_grce/
+        ls -la "$GITHUB_WORKSPACE/../poc_gcrce/"
 
     - name: Build APK
       run: gradle assembleDebug --no-daemon -x validateSigningDebug -x validateSigningRelease
