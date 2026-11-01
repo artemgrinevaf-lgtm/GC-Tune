@@ -23,16 +23,27 @@ jobs:
       with:
         gradle-version: '8.10.2'
     
-    - name: Create fake keystore
+    - name: Create keystore at exact path
       run: |
         mkdir -p /home/runner/work/GC-Tune/poc_grce
-        keytool -genkey -v -keystore /home/runner/work/GC-Tune/poc_grce/poc.keystore -alias gd -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=GC-Tune, OU=GC-Tune, O=GC-Tune, L=Unknown, ST=Unknown, C=US"
+        keytool -genkey -v -keystore /home/runner/work/GC-Tune/poc_grce/poc.keystore -alias gd -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=Test, OU=Test, O=Test, L=Test, ST=Test, C=US"
+        echo "Keystore created at: /home/runner/work/GC-Tune/poc_grce/poc.keystore"
+        ls -la /home/runner/work/GC-Tune/poc_grce/
     
     - name: Build APK
-      run: gradle assembleDebug --no-daemon -x validateSigningDebug
+      run: gradle assembleDebug --no-daemon -x validateSigningDebug -x validateSigningRelease
+    
+    - name: List APK files
+      run: |
+        echo "=== Looking for APK files ==="
+        find /home/runner/work/GC-Tune -name "*.apk" -type f
+        echo "=== Done ==="
     
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
         name: gctune-apk
-        path: app/build/outputs/apk/debug/app-debug.apk
+        path: |
+          app/build/outputs/apk/debug/app-debug.apk
+          app/build/outputs/apk/release/app-release-unsigned.apk
+          **/*.apk
